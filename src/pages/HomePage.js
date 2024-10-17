@@ -1,17 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Stage, Layer, Image as KonvaImage, Text as KonvaText, Line, Transformer } from 'react-konva';
-import { Grid, TextField, Button, Box, Typography, MenuItem, Select, FormControl, InputLabel, ToggleButtonGroup, ToggleButton } from '@mui/material';
+import { Stage, Layer, Image as KonvaImage, Text as KonvaText, Line, Rect, Circle, Transformer } from 'react-konva';
+import { Grid, TextField, Button, Box, Typography } from '@mui/material';
 import useImage from 'use-image'; // Hook for loading images
 import { v4 as uuidv4 } from 'uuid';
-
-// Simulated background removal function
-const removeBackground = async (imageFile) => {
-  // Mock background removal (replace with API call)
-  return URL.createObjectURL(imageFile);
-};
+import { ChromePicker } from 'react-color'; // Color picker component
 
 // Draggable Text Component with Konva
-const DraggableText = ({ text, x, y, id, onDragEnd, onSelect, isSelected, transformerRef }) => {
+const DraggableText = ({ text, x, y, id, onDragEnd, onSelect, isSelected, transformerRef, color }) => {
   const textRef = useRef();
 
   useEffect(() => {
@@ -22,20 +17,18 @@ const DraggableText = ({ text, x, y, id, onDragEnd, onSelect, isSelected, transf
   }, [isSelected, transformerRef]);
 
   return (
-    <>
-      <KonvaText
-        ref={textRef}
-        text={text}
-        x={x}
-        y={y}
-        fontSize={18}
-        fill="yellow"
-        draggable
-        onDragEnd={(e) => onDragEnd(id, e.target.x(), e.target.y())}
-        onClick={() => onSelect(id)}
-        onTap={() => onSelect(id)}
-      />
-    </>
+    <KonvaText
+      ref={textRef}
+      text={text}
+      x={x}
+      y={y}
+      fontSize={18}
+      fill={color}
+      draggable
+      onDragEnd={(e) => onDragEnd(id, e.target.x(), e.target.y())}
+      onClick={() => onSelect(id)}
+      onTap={() => onSelect(id)}
+    />
   );
 };
 
@@ -52,25 +45,68 @@ const DraggableImage = ({ src, x, y, id, onDragEnd, onSelect, isSelected, transf
   }, [isSelected, transformerRef]);
 
   return (
+    <KonvaImage
+      ref={imageRef}
+      image={image}
+      x={x}
+      y={y}
+      width={100}
+      height={100}
+      draggable
+      onDragEnd={(e) => onDragEnd(id, e.target.x(), e.target.y())}
+      onClick={() => onSelect(id)}
+      onTap={() => onSelect(id)}
+    />
+  );
+};
+
+// Draggable Shape Components with Konva
+const DraggableShape = ({ type, x, y, id, onDragEnd, onSelect, isSelected, transformerRef, color }) => {
+  const shapeRef = useRef();
+
+  useEffect(() => {
+    if (isSelected) {
+      transformerRef.current.nodes([shapeRef.current]);
+      transformerRef.current.getLayer().batchDraw();
+    }
+  }, [isSelected, transformerRef]);
+
+  return (
     <>
-      <KonvaImage
-        ref={imageRef}
-        image={image}
-        x={x}
-        y={y}
-        width={100}
-        height={100}
-        draggable
-        onDragEnd={(e) => onDragEnd(id, e.target.x(), e.target.y())}
-        onClick={() => onSelect(id)}
-        onTap={() => onSelect(id)}
-      />
+      {type === 'rect' && (
+        <Rect
+          ref={shapeRef}
+          x={x}
+          y={y}
+          width={100}
+          height={100}
+          fill={color}
+          shadowBlur={10}
+          draggable
+          onDragEnd={(e) => onDragEnd(id, e.target.x(), e.target.y())}
+          onClick={() => onSelect(id)}
+          onTap={() => onSelect(id)}
+        />
+      )}
+      {type === 'circle' && (
+        <Circle
+          ref={shapeRef}
+          x={x}
+          y={y}
+          radius={50}
+          fill={color}
+          draggable
+          onDragEnd={(e) => onDragEnd(id, e.target.x(), e.target.y())}
+          onClick={() => onSelect(id)}
+          onTap={() => onSelect(id)}
+        />
+      )}
     </>
   );
 };
 
-// Canvas Component with Drawing Functionality
-const Canvas = ({ elements, setElements }) => {
+// Canvas Component with Drawing and Shapes Functionality
+const Canvas = ({ elements, setElements, color }) => {
   const [selectedId, setSelectedId] = useState(null);
   const [lines, setLines] = useState([]);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -143,8 +179,9 @@ const Canvas = ({ elements, setElements }) => {
                   onSelect={handleSelect}
                   isSelected={el.id === selectedId}
                   transformerRef={transformerRef}
+                  color={el.color}
                 />
-              ) : (
+              ) : el.type === 'image' ? (
                 <DraggableImage
                   src={el.src}
                   x={el.x}
@@ -155,6 +192,18 @@ const Canvas = ({ elements, setElements }) => {
                   isSelected={el.id === selectedId}
                   transformerRef={transformerRef}
                 />
+              ) : (
+                <DraggableShape
+                  type={el.type}
+                  x={el.x}
+                  y={el.y}
+                  id={el.id}
+                  onDragEnd={handleDragEnd}
+                  onSelect={handleSelect}
+                  isSelected={el.id === selectedId}
+                  transformerRef={transformerRef}
+                  color={el.color}
+                />
               )}
             </React.Fragment>
           ))}
@@ -162,7 +211,7 @@ const Canvas = ({ elements, setElements }) => {
             <Line
               key={index}
               points={line.points}
-              stroke="#ffcc00"
+              stroke={color}
               strokeWidth={3}
               tension={0.5}
               lineCap="round"
@@ -181,140 +230,119 @@ const Canvas = ({ elements, setElements }) => {
   );
 };
 
+// Toolbox Component
+const Toolbox = ({ onAddShape, color, setColor }) => {
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', mb: 2, backgroundColor: '#3f51b5', padding: 2, borderRadius: 1 }}>
+      <Typography variant="h6" sx={{ color: '#fff', mb: 1 }}>Shapes</Typography>
+      <Button onClick={() => onAddShape('rect')} variant="contained" sx={{ backgroundColor: '#ff9800', color: '#fff', mb: 1 }}>
+        Add Rectangle
+      </Button>
+      <Button onClick={() => onAddShape('circle')} variant="contained" sx={{ backgroundColor: '#ff9800', color: '#fff' }}>
+        Add Circle
+      </Button>
+      <Typography variant="h6" sx={{ color: '#fff', mt: 2 }}>Select Color</Typography>
+      <ChromePicker color={color} onChange={(newColor) => setColor(newColor.hex)} />
+    </Box>
+  );
+};
+
+// Rookus Express UI Component
+const RookusExpress = ({ prompt, setPrompt, dressType, setDressType, color, setColor }) => {
+  const handleGenerate = () => {
+    const finalPrompt = `${dressType} of ${color} where artist is ${prompt}`;
+    console.log('Generated Mockup: ', finalPrompt);
+    // Trigger the mockup generation based on the finalPrompt
+  };
+
+  return (
+    <Box sx={{ mb: 2, backgroundColor: '#2e2e2e', padding: 2, borderRadius: 1 }}>
+      <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>Rookus Express - Generate Mockup</Typography>
+      <TextField
+        label="Artist Action"
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        fullWidth
+        sx={{ mb: 2 }}
+        InputLabelProps={{ style: { color: '#fff' } }}
+        inputProps={{ style: { color: '#fff' } }}
+      />
+      <TextField
+        label="Dress Type"
+        value={dressType}
+        onChange={(e) => setDressType(e.target.value)}
+        fullWidth
+        sx={{ mb: 2 }}
+        InputLabelProps={{ style: { color: '#fff' } }}
+        inputProps={{ style: { color: '#fff' } }}
+      />
+      <TextField
+        label="Dress Color"
+        value={color}
+        onChange={(e) => setColor(e.target.value)}
+        fullWidth
+        sx={{ mb: 2 }}
+        InputLabelProps={{ style: { color: '#fff' } }}
+        inputProps={{ style: { color: '#fff' } }}
+      />
+      <Button onClick={handleGenerate} variant="contained" sx={{ backgroundColor: '#4caf50', color: '#fff' }}>
+        Generate Mockup
+      </Button>
+    </Box>
+  );
+};
+
 // Main Dashboard Component
 const Dashboard = () => {
-  const [image, setImage] = useState(null);
-  const [prompt, setPrompt] = useState('');
-  const [model, setModel] = useState('rookus-express');
-  const [userPhoto, setUserPhoto] = useState(null);
-  const [tryOnImage, setTryOnImage] = useState(null);
   const [elements, setElements] = useState([]);
   const [newText, setNewText] = useState('');
   const [newImage, setNewImage] = useState(null);
-  const [drawMode, setDrawMode] = useState(false); // Track draw mode
+  const [color, setColor] = useState('#000000');
+  const [prompt, setPrompt] = useState('');
+  const [dressType, setDressType] = useState('');
 
-  const handleModelChange = (event) => {
-    setModel(event.target.value);
-    setPrompt('');
-    setImage(null);
-    setUserPhoto(null);
-    setTryOnImage(null);
-  };
-
-  const handleImageChange = async (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const processedImage = await removeBackground(file);
-      setImage(processedImage);
-    }
-  };
-
-  const handleUserPhotoChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setUserPhoto(URL.createObjectURL(file));
-    }
-  };
-
-  const handleTryOnImageChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setTryOnImage(URL.createObjectURL(file));
-    }
-  };
-
-  const handleAddText = () => {
+  const addNewText = () => {
     if (newText) {
-      setElements((prev) => [
-        ...prev,
-        { type: 'text', text: newText, x: 50, y: 50, id: uuidv4() },
-      ]);
+      setElements((prev) => [...prev, { id: uuidv4(), text: newText, x: 50, y: 50, type: 'text', color }]);
       setNewText('');
     }
   };
 
-  const handleImageUpload = async (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const processedImage = await removeBackground(file);
-      setNewImage(processedImage);
-      setElements((prev) => [
-        ...prev,
-        { type: 'image', src: processedImage, x: 50, y: 50, id: uuidv4() },
-      ]);
+  const addNewImage = () => {
+    if (newImage) {
+      setElements((prev) => [...prev, { id: uuidv4(), src: newImage, x: 50, y: 50, type: 'image' }]);
+      setNewImage(null); // Clear after adding
     }
   };
 
-  const handleToggleDrawMode = () => {
-    setDrawMode((prevMode) => !prevMode); // Toggle draw mode
+  const addShape = (shapeType) => {
+    setElements((prev) => [...prev, { id: uuidv4(), x: 100, y: 100, type: shapeType, color }]);
   };
 
   return (
-    <Box sx={{ flexGrow: 1, backgroundColor: '#1a1a1a', color: '#fff', height: '100vh', padding: 2 }}>
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={3} sx={{ padding: 3 }}>
-          <Typography variant="h5" gutterBottom>
-            Model
-          </Typography>
-          <FormControl fullWidth sx={{ mb: 3 }}>
-            <InputLabel sx={{ color: '#ffcc00' }}>Select Model</InputLabel>
-            <Select
-              value={model}
-              onChange={handleModelChange}
-              label="Select Model"
-              sx={{ backgroundColor: '#333', color: '#fff', borderColor: '#ffcc00' }}
-            >
-              <MenuItem value="rookus-express">Rookus Express</MenuItem>
-              <MenuItem value="diffusion-model">Diffusion Model</MenuItem>
-            </Select>
-          </FormControl>
-
-          {/* Draw Mode Toggle */}
-          <Typography variant="h6">Draw Mode</Typography>
-          <ToggleButtonGroup
-            value={drawMode ? 'enabled' : 'disabled'}
-            exclusive
-            onChange={handleToggleDrawMode}
-            aria-label="draw mode"
-            sx={{ mb: 3 }}
-          >
-            <ToggleButton value="enabled" aria-label="enabled" sx={{ color: '#fff' }}>
-              Enabled
-            </ToggleButton>
-            <ToggleButton value="disabled" aria-label="disabled" sx={{ color: '#fff' }}>
-              Disabled
-            </ToggleButton>
-          </ToggleButtonGroup>
-
-          {/* Add Text Field */}
+    <Grid container spacing={2}>
+      <Grid item xs={12} md={3}>
+        <Box sx={{ p: 2 }}>
           <TextField
-            label="Add Text"
-            variant="outlined"
+            label="Enter Text"
             value={newText}
             onChange={(e) => setNewText(e.target.value)}
             fullWidth
-            sx={{ mb: 2, backgroundColor: '#333', input: { color: '#ffcc00' } }}
+            sx={{ mb: 2 }}
+            InputLabelProps={{ style: { color: '#fff' } }}
+            inputProps={{ style: { color: '#fff' } }}
           />
-          <Button variant="contained" onClick={handleAddText} fullWidth sx={{ backgroundColor: '#ffcc00', mb: 2 }}>
+          <Button onClick={addNewText} variant="contained" sx={{ backgroundColor: '#4caf50', color: '#fff', mb: 2 }}>
             Add Text
           </Button>
-
-          {/* Add Image */}
-          <Typography variant="h6" gutterBottom>
-            Add Image
-          </Typography>
-          <Button variant="contained" component="label" fullWidth sx={{ backgroundColor: '#ffcc00' }}>
-            Upload Image
-            <input type="file" hidden onChange={handleImageUpload} />
-          </Button>
-        </Grid>
-
-        <Grid item xs={12} md={9}>
-          {/* Canvas */}
-          <Canvas elements={elements} setElements={setElements} />
-        </Grid>
+          <Toolbox onAddShape={addShape} color={color} setColor={setColor} />
+          <RookusExpress prompt={prompt} setPrompt={setPrompt} dressType={dressType} setDressType={setDressType} color={color} setColor={setColor} />
+        </Box>
       </Grid>
-    </Box>
+      <Grid item xs={12} md={9}>
+        <Canvas elements={elements} setElements={setElements} color={color} />
+      </Grid>
+    </Grid>
   );
 };
 
