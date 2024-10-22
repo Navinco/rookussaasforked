@@ -1,18 +1,29 @@
+import { MenuItem, Select, IconButton, Tooltip } from '@mui/material';
 import React, { useState, useRef, useEffect } from 'react';
 import { Stage, Layer, Image as KonvaImage, Text as KonvaText, Line, Rect, Circle, Transformer } from 'react-konva';
 import { Grid, TextField, Button, Box, Typography } from '@mui/material';
-import useImage from 'use-image'; // Hook for loading images
+import useImage from 'use-image';
 import { v4 as uuidv4 } from 'uuid';
-import { ChromePicker } from 'react-color'; // Color picker component
+import { ChromePicker } from 'react-color';
+import ClearIcon from '@mui/icons-material/Clear';
+import RectangleIcon from '@mui/icons-material/Rectangle'; // Rectangle shape icon
+import CircleIcon from '@mui/icons-material/Circle'; // Circle shape icon
+import TextFieldsIcon from '@mui/icons-material/TextFields'; // Text icon
+import InsertPhotoIcon from '@mui/icons-material/InsertPhoto'; // Image icon
+import ColorLensIcon from '@mui/icons-material/ColorLens'; // Color picker icon
+
+
 
 // Draggable Text Component with Konva
-const DraggableText = ({ text, x, y, id, onDragEnd, onSelect, isSelected, transformerRef, color }) => {
+const DraggableText = ({ text, x, y, id, onDragEnd, onSelect, isSelected, transformerRef, color, fontFamily }) => {
   const textRef = useRef();
 
   useEffect(() => {
     if (isSelected) {
       transformerRef.current.nodes([textRef.current]);
       transformerRef.current.getLayer().batchDraw();
+    } else {
+      transformerRef.current.nodes([]); // Clear transformer nodes if not selected
     }
   }, [isSelected, transformerRef]);
 
@@ -24,6 +35,7 @@ const DraggableText = ({ text, x, y, id, onDragEnd, onSelect, isSelected, transf
       y={y}
       fontSize={18}
       fill={color}
+      fontFamily={fontFamily}
       draggable
       onDragEnd={(e) => onDragEnd(id, e.target.x(), e.target.y())}
       onClick={() => onSelect(id)}
@@ -41,6 +53,8 @@ const DraggableImage = ({ src, x, y, id, onDragEnd, onSelect, isSelected, transf
     if (isSelected) {
       transformerRef.current.nodes([imageRef.current]);
       transformerRef.current.getLayer().batchDraw();
+    } else {
+      transformerRef.current.nodes([]); // Clear transformer nodes if not selected
     }
   }, [isSelected, transformerRef]);
 
@@ -60,7 +74,7 @@ const DraggableImage = ({ src, x, y, id, onDragEnd, onSelect, isSelected, transf
   );
 };
 
-// Draggable Shape Components with Konva
+// Draggable Shape Component with Konva
 const DraggableShape = ({ type, x, y, id, onDragEnd, onSelect, isSelected, transformerRef, color }) => {
   const shapeRef = useRef();
 
@@ -68,6 +82,8 @@ const DraggableShape = ({ type, x, y, id, onDragEnd, onSelect, isSelected, trans
     if (isSelected) {
       transformerRef.current.nodes([shapeRef.current]);
       transformerRef.current.getLayer().batchDraw();
+    } else {
+      transformerRef.current.nodes([]); // Clear transformer nodes if not selected
     }
   }, [isSelected, transformerRef]);
 
@@ -152,7 +168,11 @@ const Canvas = ({ elements, setElements, color }) => {
   };
 
   const handleSelect = (id) => {
-    setSelectedId(id === selectedId ? null : id); // Deselect if already selected
+    if (id === selectedId) {
+      setSelectedId(null); // Deselect if already selected
+    } else {
+      setSelectedId(id); // Select new id
+    }
   };
 
   return (
@@ -160,17 +180,18 @@ const Canvas = ({ elements, setElements, color }) => {
       <Stage
         ref={stageRef}
         width={window.innerWidth * 0.75}
-        height={500}
+        height={700}
         style={{ backgroundColor: '#1a1a1a' }}
         onMouseDown={handleMouseDown}
         onMousemove={handleMouseMove}
         onMouseup={handleMouseUp}
       >
         <Layer>
-          {elements.map((el) => (
-            <React.Fragment key={el.id}>
-              {el.type === 'text' ? (
+          {elements.map((el) => {
+            if (el.type === 'text') {
+              return (
                 <DraggableText
+                  key={el.id}
                   text={el.text}
                   x={el.x}
                   y={el.y}
@@ -180,9 +201,14 @@ const Canvas = ({ elements, setElements, color }) => {
                   isSelected={el.id === selectedId}
                   transformerRef={transformerRef}
                   color={el.color}
+                  fontFamily={el.fontFamily}
                 />
-              ) : el.type === 'image' ? (
+              );
+            }
+            if (el.type === 'image') {
+              return (
                 <DraggableImage
+                  key={el.id}
                   src={el.src}
                   x={el.x}
                   y={el.y}
@@ -192,21 +218,23 @@ const Canvas = ({ elements, setElements, color }) => {
                   isSelected={el.id === selectedId}
                   transformerRef={transformerRef}
                 />
-              ) : (
-                <DraggableShape
-                  type={el.type}
-                  x={el.x}
-                  y={el.y}
-                  id={el.id}
-                  onDragEnd={handleDragEnd}
-                  onSelect={handleSelect}
-                  isSelected={el.id === selectedId}
-                  transformerRef={transformerRef}
-                  color={el.color}
-                />
-              )}
-            </React.Fragment>
-          ))}
+              );
+            }
+            return (
+              <DraggableShape
+                key={el.id}
+                type={el.type}
+                x={el.x}
+                y={el.y}
+                id={el.id}
+                onDragEnd={handleDragEnd}
+                onSelect={handleSelect}
+                isSelected={el.id === selectedId}
+                transformerRef={transformerRef}
+                color={el.color}
+              />
+            );
+          })}
           {lines.map((line, index) => (
             <Line
               key={index}
@@ -222,30 +250,66 @@ const Canvas = ({ elements, setElements, color }) => {
         </Layer>
       </Stage>
       {selectedId && (
-        <Button onClick={handleDelete} variant="contained" sx={{ mt: 2, backgroundColor: '#ff0000', color: '#fff' }}>
-          Delete Selected
-        </Button>
+        <Tooltip title="Delete Selected">
+          <IconButton onClick={handleDelete} sx={{ mt: 2, color: '#ff0000' }}>
+            <ClearIcon />
+          </IconButton>
+        </Tooltip>
       )}
     </>
   );
 };
 
 // Toolbox Component
+// Compact Toolbox Component (Icon-based)
 const Toolbox = ({ onAddShape, color, setColor }) => {
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', mb: 2, backgroundColor: '#3f51b5', padding: 2, borderRadius: 1 }}>
-      <Typography variant="h6" sx={{ color: '#fff', mb: 1 }}>Shapes</Typography>
-      <Button onClick={() => onAddShape('rect')} variant="contained" sx={{ backgroundColor: '#ff9800', color: '#fff', mb: 1 }}>
-        Add Rectangle
-      </Button>
-      <Button onClick={() => onAddShape('circle')} variant="contained" sx={{ backgroundColor: '#ff9800', color: '#fff' }}>
-        Add Circle
-      </Button>
-      <Typography variant="h6" sx={{ color: '#fff', mt: 2 }}>Select Color</Typography>
-      <ChromePicker color={color} onChange={(newColor) => setColor(newColor.hex)} />
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'space-around',
+        backgroundColor: '#3f51b5',
+        padding: '4px', // Reduce padding
+        borderRadius: '8px',
+        width: '100%',
+        boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
+      }}
+    >
+      <Tooltip title="Add Rectangle">
+        <IconButton onClick={() => onAddShape('rect')} sx={{ color: '#fff', padding: '4px' }}>
+          <RectangleIcon fontSize="small" /> {/* Use small icons */}
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Add Circle">
+        <IconButton onClick={() => onAddShape('circle')} sx={{ color: '#fff', padding: '4px' }}>
+          <CircleIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Add Text">
+        <IconButton onClick={() => onAddShape('text')} sx={{ color: '#fff', padding: '4px' }}>
+          <TextFieldsIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Add Image">
+        <IconButton onClick={() => onAddShape('image')} sx={{ color: '#fff', padding: '4px' }}>
+          <InsertPhotoIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Select Color">
+        <IconButton sx={{ color: '#fff', padding: '4px' }}>
+          <ColorLensIcon fontSize="small" />
+        </IconButton>
+        <ChromePicker
+          color={color}
+          onChangeComplete={(newColor) => setColor(newColor.hex)}
+          disableAlpha
+          style={{ position: 'absolute', zIndex: 2 }} // Make sure color picker is visible
+        />
+      </Tooltip>
     </Box>
   );
 };
+
 
 // Rookus Express UI Component
 const RookusExpress = ({ prompt, setPrompt, dressType, setDressType, color, setColor }) => {
@@ -257,13 +321,13 @@ const RookusExpress = ({ prompt, setPrompt, dressType, setDressType, color, setC
 
   return (
     <Box sx={{ mb: 2, backgroundColor: '#2e2e2e', padding: 2, borderRadius: 1 }}>
-      <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>Rookus Express - Generate Mockup</Typography>
+      <Typography variant="h6" sx={{ color: '#fff' }}>Generate Mockup</Typography>
       <TextField
-        label="Artist Action"
+        label="Enter Artist Prompt"
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         fullWidth
-        sx={{ mb: 2 }}
+        sx={{ mb: 1 }}
         InputLabelProps={{ style: { color: '#fff' } }}
         inputProps={{ style: { color: '#fff' } }}
       />
@@ -271,15 +335,6 @@ const RookusExpress = ({ prompt, setPrompt, dressType, setDressType, color, setC
         label="Dress Type"
         value={dressType}
         onChange={(e) => setDressType(e.target.value)}
-        fullWidth
-        sx={{ mb: 2 }}
-        InputLabelProps={{ style: { color: '#fff' } }}
-        inputProps={{ style: { color: '#fff' } }}
-      />
-      <TextField
-        label="Dress Color"
-        value={color}
-        onChange={(e) => setColor(e.target.value)}
         fullWidth
         sx={{ mb: 2 }}
         InputLabelProps={{ style: { color: '#fff' } }}
@@ -296,22 +351,24 @@ const RookusExpress = ({ prompt, setPrompt, dressType, setDressType, color, setC
 const Dashboard = () => {
   const [elements, setElements] = useState([]);
   const [newText, setNewText] = useState('');
-  const [newImage, setNewImage] = useState(null);
+  const [newImageFile, setNewImageFile] = useState(null);
   const [color, setColor] = useState('#000000');
   const [prompt, setPrompt] = useState('');
   const [dressType, setDressType] = useState('');
+  const [fontFamily, setFontFamily] = useState('Arial');
 
   const addNewText = () => {
     if (newText) {
-      setElements((prev) => [...prev, { id: uuidv4(), text: newText, x: 50, y: 50, type: 'text', color }]);
-      setNewText('');
+      setElements((prev) => [...prev, { id: uuidv4(), text: newText, x: 50, y: 50, type: 'text', color, fontFamily }]);
+      setNewText(''); // Clear input after adding
     }
   };
 
   const addNewImage = () => {
-    if (newImage) {
-      setElements((prev) => [...prev, { id: uuidv4(), src: newImage, x: 50, y: 50, type: 'image' }]);
-      setNewImage(null); // Clear after adding
+    if (newImageFile) {
+      const imageUrl = URL.createObjectURL(newImageFile);
+      setElements((prev) => [...prev, { id: uuidv4(), src: imageUrl, x: 50, y: 50, type: 'image' }]);
+      setNewImageFile(null); // Clear after adding
     }
   };
 
@@ -322,7 +379,7 @@ const Dashboard = () => {
   return (
     <Grid container spacing={2}>
       <Grid item xs={12} md={3}>
-        <Box sx={{ p: 2 }}>
+        <Box sx={{ p: 2, height: '100vh', backgroundColor: '#2c2c2c', borderRadius: 1, overflowY: 'auto' }}>
           <TextField
             label="Enter Text"
             value={newText}
@@ -332,13 +389,40 @@ const Dashboard = () => {
             InputLabelProps={{ style: { color: '#fff' } }}
             inputProps={{ style: { color: '#fff' } }}
           />
+
+          {/* Font Selection Dropdown */}
+          <Select
+            value={fontFamily}
+            onChange={(e) => setFontFamily(e.target.value)}
+            fullWidth
+            sx={{ mb: 2, color: '#fff', backgroundColor: '#1a1a1a', borderRadius: '4px' }}
+          >
+            <MenuItem value="Arial">Arial</MenuItem>
+            <MenuItem value="Courier New">Courier New</MenuItem>
+            <MenuItem value="Times New Roman">Times New Roman</MenuItem>
+            <MenuItem value="Comic Sans MS">Comic Sans MS</MenuItem>
+          </Select>
+
           <Button onClick={addNewText} variant="contained" sx={{ backgroundColor: '#4caf50', color: '#fff', mb: 2 }}>
             Add Text
           </Button>
+
+          {/* File input for image upload */}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setNewImageFile(e.target.files[0])} // Set the selected file
+            style={{ marginBottom: '8px', display: 'block' }}
+          />
+          <Button onClick={addNewImage} variant="contained" sx={{ backgroundColor: '#4caf50', color: '#fff', mb: 2 }}>
+            Add Image
+          </Button>
+
           <Toolbox onAddShape={addShape} color={color} setColor={setColor} />
           <RookusExpress prompt={prompt} setPrompt={setPrompt} dressType={dressType} setDressType={setDressType} color={color} setColor={setColor} />
         </Box>
       </Grid>
+
       <Grid item xs={12} md={9}>
         <Canvas elements={elements} setElements={setElements} color={color} />
       </Grid>
