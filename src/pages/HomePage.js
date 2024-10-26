@@ -356,6 +356,9 @@ const Dashboard = () => {
   const [prompt, setPrompt] = useState('');
   const [dressType, setDressType] = useState('');
   const [fontFamily, setFontFamily] = useState('Arial');
+  const [showTextOptions, setShowTextOptions] = useState(false);
+  const [showFileOptions, setShowFileOptions] = useState(false);
+
 
   const addNewText = () => {
     if (newText) {
@@ -380,54 +383,79 @@ const Dashboard = () => {
     <Grid container spacing={2}>
       <Grid item xs={12} md={3}>
         <Box sx={{ p: 2, height: '100vh', backgroundColor: '#2c2c2c', borderRadius: 1, overflowY: 'auto' }}>
-          <TextField
-            label="Enter Text"
-            value={newText}
-            onChange={(e) => setNewText(e.target.value)}
-            fullWidth
-            sx={{ mb: 2 }}
-            InputLabelProps={{ style: { color: '#fff' } }}
-            inputProps={{ style: { color: '#fff' } }}
-          />
-
-          {/* Font Selection Dropdown */}
-          <Select
-            value={fontFamily}
-            onChange={(e) => setFontFamily(e.target.value)}
-            fullWidth
-            sx={{ mb: 2, color: '#fff', backgroundColor: '#1a1a1a', borderRadius: '4px' }}
+          
+          {/* Button to show/hide text input options */}
+          <Button
+            onClick={() => setShowTextOptions((prev) => !prev)}
+            variant="contained"
+            sx={{ backgroundColor: '#4caf50', color: '#fff', mb: 2 }}
           >
-            <MenuItem value="Arial">Arial</MenuItem>
-            <MenuItem value="Courier New">Courier New</MenuItem>
-            <MenuItem value="Times New Roman">Times New Roman</MenuItem>
-            <MenuItem value="Comic Sans MS">Comic Sans MS</MenuItem>
-          </Select>
-
-          <Button onClick={addNewText} variant="contained" sx={{ backgroundColor: '#4caf50', color: '#fff', mb: 2 }}>
-            Add Text
+            {showTextOptions ? 'Hide Text Options' : 'Add Text'}
           </Button>
-
-          {/* File input for image upload */}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setNewImageFile(e.target.files[0])} // Set the selected file
-            style={{ marginBottom: '8px', display: 'block' }}
-          />
-          <Button onClick={addNewImage} variant="contained" sx={{ backgroundColor: '#4caf50', color: '#fff', mb: 2 }}>
-            Add Image
+          
+          {showTextOptions && (
+            <>
+              <TextField
+                label="Enter Text"
+                value={newText}
+                onChange={(e) => setNewText(e.target.value)}
+                fullWidth
+                sx={{ mb: 2 }}
+                InputLabelProps={{ style: { color: '#fff' } }}
+                inputProps={{ style: { color: '#fff' } }}
+              />
+              
+              {/* Font Selection Dropdown */}
+              <Select
+                value={fontFamily}
+                onChange={(e) => setFontFamily(e.target.value)}
+                fullWidth
+                sx={{ mb: 2, color: '#fff', backgroundColor: '#1a1a1a', borderRadius: '4px' }}
+              >
+                <MenuItem value="Arial">Arial</MenuItem>
+                <MenuItem value="Courier New">Courier New</MenuItem>
+                <MenuItem value="Times New Roman">Times New Roman</MenuItem>
+                <MenuItem value="Comic Sans MS">Comic Sans MS</MenuItem>
+              </Select>
+  
+              <Button onClick={addNewText} variant="contained" sx={{ backgroundColor: '#4caf50', color: '#fff', mb: 2 }}>
+                Add Text
+              </Button>
+            </>
+          )}
+  
+          {/* Button to show/hide file input */}
+          <Button
+            onClick={() => setShowFileOptions((prev) => !prev)}
+            variant="contained"
+            sx={{ backgroundColor: '#4caf50', color: '#fff', mb: 2 }}
+          >
+            {showFileOptions ? 'Hide File Options' : 'Choose File'}
           </Button>
-
+  
+          {showFileOptions && (
+            <>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setNewImageFile(e.target.files[0])} // Set the selected file
+                style={{ marginBottom: '8px', display: 'block' }}
+              />
+              <Button onClick={addNewImage} variant="contained" sx={{ backgroundColor: '#4caf50', color: '#fff', mb: 2 }}>
+                Add Image
+              </Button>
+            </>
+          )}
+  
           <Toolbox onAddShape={addShape} color={color} setColor={setColor} />
           <RookusExpress prompt={prompt} setPrompt={setPrompt} dressType={dressType} setDressType={setDressType} color={color} setColor={setColor} />
         </Box>
       </Grid>
-
+  
       <Grid item xs={12} md={9}>
         <Canvas elements={elements} setElements={setElements} color={color} />
       </Grid>
     </Grid>
   );
 };
-
 export default Dashboard;
